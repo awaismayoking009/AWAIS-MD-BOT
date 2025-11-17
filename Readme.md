@@ -4,13 +4,15 @@
 
 ![Bot Image](media/✨AWAIS MAYO KING 009✨.jpg)
 
-<img src="media/✨AWAIS MAYO KING 009✨.jpg" height="100" width="100%">
+<img src="media/✨AWAIS MAYO KING 009✨.jpg" width="100%">
+
 
 Welcome to **AWAIS-MD-BOT**, a powerful Multi-Device WhatsApp Bot developed by **Awaismayoking009**. 🚀  
 This bot is fully tested on Termux, Linux (Kali, Ubuntu), Panels, and other terminal environments.
   
 
-<img src="media/✨AWAIS MAYO KING 009✨.jpg" height="100" width="100%">
+<img src="media/✨AWAIS MAYO KING 009✨.jpg" width="100%">
+
 
 ## 🌟 About AWAIS-MD-BOT
 
@@ -19,7 +21,8 @@ Whether you want **auto typing, media download, group management**, or just **fu
 
 **Perfect for**: Termux users, Linux enthusiasts, developers, and bot lovers who want a full-featured WhatsApp bot.  
 
-<img src="media/✨AWAIS MAYO KING 009✨.jpg" height="100" width="100%">
+<img src="media/✨AWAIS MAYO KING 009✨.jpg" width="100%">
+
 
 ## 📦 Features
 
@@ -29,7 +32,7 @@ Whether you want **auto typing, media download, group management**, or just **fu
 - Media folder support for images, stickers, and icons.  
 - Fully customizable and modular.  
 
-<img src="media/✨AWAIS MAYO KING 009✨.jpg" height="100" width="100%">
+<img src="media/✨AWAIS MAYO KING 009✨.jpg" width="100%">
 
 ## 📹 Video Tutorials
 
