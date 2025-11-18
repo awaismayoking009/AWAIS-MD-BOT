@@ -1,221 +1,103 @@
-// Clean & Readable Command Handler
-const fs = require("fs");
-const path = require("path");
-const { generateWAMessageFromContent } = require("@whiskeysockets/baileys");
-const { toggleAntidelete } = require("../antidelete");
+// This function receives 'sock' and 'msg' from index.js
+// 'opts' contains additional info like: { isGroup, isFromMe, text, jid }
 
-// Default mode
-if (!global.mode) global.mode = "self";
-
-// Awais Mayo king009 Owner-only commands list
-const ownerOnlyCommands = [
-  "video2", "song2", "kick", "add", "nice", "tagall",
-  "antilink", "antilinkick", "autostatus", "autoreact",
-  "autogreet", "autotyping", "autoread", "block", "unblock",
-  "shutdown", "restart", "setbio", "setname", "setpp", "save",
-  "join", "delaymsg", "del", "reactch", "kickall", "antibug",
-  "leave", "open", "close", "tagadmin", "hidetag", "listactive",
-  "changename", "closetime", "warn", "promote", "demote",
-  "promoteall", "demoteall", "say", "cpp", "harami", "ghostping",
-  "adminkill", "delaymsg", "autorecording"
-];
-
-// Load menu.js
-const menuData = {};
-try {
-  const menuPath = path.join(__dirname, "..", "media", "menu.js");
-  Object.assign(menuData, require(menuPath));
-} catch (err) {
-  // If menu.js is missing, it logs an error but doesn't crash the bot
-  console.error("❌ Error loading menu.js:", err);
-}
-
-// Load core.js if exists
-let core;
-try {
-  const corePath = path.join(__dirname, "./core.js");
-  core = require(corePath);
-} catch (err) {
-  // If core.js is missing, it logs an error but doesn't crash the bot
-  console.error("❌ Error loading core.js:", err);
-}
-
-// ===============================
-// 🔹 MAIN COMMAND HANDLER
-// ===============================
-async function handleCommand(conn, msg) {
-  const text =
-    msg.message?.conversation ||
-    msg.message?.extendedTextMessage?.text ||
-    msg.message?.imageMessage?.caption ||
-    msg.message?.videoMessage?.caption ||
-    "";
-
-  if (!text.startsWith(".")) return;
-
-  const parts = text.trim().split(/ +/);
-  const command = parts[0].slice(1).toLowerCase();
-  const args = parts.slice(1);
-
-  const chatId = msg.key.remoteJid;
-  const isGroup = chatId.endsWith("@g.us");
-  const senderId = msg.key.fromMe
-    ? conn.user.id.split(":")[0] + "@s.whatsapp.net"
-    : msg.key.participant || msg.key.remoteJid;
-
-  const senderNum = senderId.replace(/\D/g, "");
-  const botNum = (conn.user.id || "").replace(/\D/g, "");
-  const isOwner = senderNum.slice(0, 10) === botNum.slice(0, 10);
-  const isDev = senderNum.includes("923040488788"); // dev bypass
-
-  const reply = (text) => conn.sendMessage(chatId, { text }, { quoted: msg });
-
-  // 🔸 Mode control
-  if (command === "self") {
-    if (!isOwner && !isDev)
-      return reply("🚫 *Only Owner Can Switch Modes*");
-
-    global.mode = "self";
-    return reply("🔒 BOT IS NOW IN *SELF MODE* — Only Owner can use me!");
-  }
-
-  if (command === "public") {
-    if (!isOwner && !isDev)
-      return reply("🚫 *Only Owner Awais Mayo Can Switch Modes*");
-
-    global.mode = "public";
-    return reply("🌍 BOT IS NOW IN *PUBLIC MODE* — Everyone can use me!");
-  }
-
-  // 🔸 Owner bypass
-  if (isDev) {
-    return runCommand({
-      conn,
-      msg,
-      args,
-      command,
-      chatId,
-      isGroup,
-      senderNum,
-      reply
-    });
-  }
-
-  // 🔸 Mode restrictions
-  if (global.mode === "self" && !isOwner && !["menu", "repo", "idcheck"].includes(command)) {
-    return;
-  }
-
-  if (global.mode === "public" && ownerOnlyCommands.includes(command) && !isOwner) {
-    return reply("💀 *OWNER ONLY COMMAND!* You ain't my master londey!");
-  }
-
-  // 🔸 Direct calls
-  if (["menu", "repo", "idcheck", "antidelete"].includes(command)) {
-    return runCommand({
-      conn,
-      msg,
-      args,
-      command,
-      chatId,
-      isGroup,
-      senderNum,
-      reply
-    });
-  }
-
-  // Default
-  return runCommand({
-    conn,
-    msg,
-    args,
-    command,
-    chatId,
-    isGroup,
-    senderNum,
-    reply
-  });
-}
-
-// ===============================
-// 🔹 COMMAND EXECUTOR
-// ===============================
-async function runCommand({
-  conn,
-  msg,
-  args,
-  command,
-  chatId,
-  isGroup,
-  senderNum,
-  reply
-}) {
+const handleCommand = async (sock, msg, opts) => {
   try {
-    // 🔸 idcheck
-    if (command === "idcheck") {
-      const botId = conn.user.id || "";
-      return reply(
-        `🤖 *Bot ID:* ${botId}\n📤 *Sender JID:* ${
-          msg.key.participant || msg.key.remoteJid
-        }\n🔢 *Sender Clean:* ${senderNum}`
-      );
-    }
+    // 1. Extract message content and JID
+    const text = opts.text; 
+    const jid = opts.jid;
+    
+    // 2. Set the command prefix (default to '!' if not set in settings)
+    const prefix = global.settings.prefix || '!'; 
+    
+    // 3. Ignore messages sent by the bot itself
+    if (opts.isFromMe) return; 
+    
+    // 4. Parse Command and Arguments
+    const isCommand = text.startsWith(prefix);
+    if (!isCommand) return; // Not a command
+    
+    const args = text.slice(prefix.length).trim().split(/ +/).filter(s => s.length > 0);
+    const cmd = args.shift()?.toLowerCase();
+    const fullArgs = args.join(' ');
+    
+    // 5. Ignore if no command name is found
+    if (!cmd) return; 
 
-    // 🔸 menu message
-    if (menuData[command]) {
-      const menuMessage = generateWAMessageFromContent(
-        chatId,
-        { extendedTextMessage: { text: menuData[command] } },
-        { userJid: chatId }
-      );
-      return await conn.relayMessage(chatId, menuMessage.message, {
-        messageId: menuMessage.key.id
-      });
-    }
+    // 6. Log the command execution for debugging
+    console.log(`[COMMAND] Executed: ${cmd} by ${msg.key.participant || jid}`);
 
-    // 🔸 antidelete handler
-    if (command === "antidelete") {
-      return toggleAntidelete({ conn, m: msg, args, reply, jid: chatId });
-    }
+    // --- Main Command Switch Case ---
 
-    // 🔸 core functions
-    if (core && core[command] && typeof core[command] === "function") {
-      return await core[command]({
-        conn,
-        m: msg,
-        args,
-        command,
-        jid: chatId,
-        isGroup,
-        sender: senderNum,
-        reply
-      });
-    }
+    switch (cmd) {
+      
+      case 'menu':
+      case 'help':
+        {
+          const helpMessage = `
+*╭━━━「 👑 AWAIS BOT MENU 👑 」━━━╮*
 
-    // 🔸 individual command files
-    const filePath = path.join(__dirname, "..", `${command}.js`);
-    if (fs.existsSync(filePath)) {
-      const commandFile = require(filePath);
-      if (typeof commandFile === "function") {
-        return await commandFile({ conn, m: msg, args, command, jid: chatId, isGroup, sender: senderNum, reply });
-      }
-      if (typeof commandFile.run === "function") {
-        return await commandFile.run({ conn, m: msg, args, command, jid: chatId, isGroup, sender: senderNum, reply });
-      }
-    }
+*GENERAL COMMANDS:*
+  ${prefix}menu  - Shows this menu.
+  ${prefix}ping  - Checks bot latency/speed.
 
-    // 🔸 unknown command
-    return reply("*ᴜɴᴋɴᴏᴡɴ ᴄᴏᴍᴍᴀɴᴅ! ᴛʀʏ `.ᴍᴇɴᴜ` ʙᴇꜰᴏʀᴇ sʜᴏᴡɪɴɢ ᴏꜰꜰ 𓄀*");
+*GROUP COMMANDS:*
+  ${prefix}tagall  - Tags all group members (Admin only).
+  ${prefix}antilink on/off  - Toggles the anti-link feature (Admin only).
 
-  } catch (err) {
-    console.error("⚠️ Error in command execution:", err);
-    return reply("⚠️ Error in command execution!");
-  }
-}
+*OWNER COMMANDS:*
+  ${prefix}setprefix [char] - Sets a new command prefix.
+  ${prefix}broadcast [msg] - Sends a message to all groups.
+  
+*╰━━━「 𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘 𝐀𝐖𝐀𝐈𝐒 」━━━╯*
+          `;
+          await sock.sendMessage(jid, { text: helpMessage });
+        }
+        break;
 
-// ===============================
-// 🔹 Export
-// ===============================
-module.exports = {
-  handleCommand
-};
+      case 'ping':
+        {
+          const start = Date.now();
+          // Send a message to measure RTT (Round Trip Time)
+          const sentMsg = await sock.sendMessage(jid, { text: 'Ping...' });
+          const end = Date.now();
+          const latency = end - start;
+          
+          await sock.sendMessage(jid, { text: `🚀 Pong! Latency: *${latency}ms*` }, { quoted: sentMsg });
+        }
+        break;
+        
+      case 'tagall':
+        // Example Group Command
+        if (!opts.isGroup) {
+            await sock.sendMessage(jid, { text: `❌ This command can only be used in groups.` });
+            return;
+        }
+        
+        // You should add an Admin check here for security
+        const metadata = await sock.groupMetadata(jid);
+        const members = metadata.participants.map(p => p.id);
+        
+        await sock.sendMessage(jid, { 
+            text: `📢 *${fullArgs || '📣 Calling everyone! 📣'}*\n\n` + members.map(m => `@${m.split('@')[0]}`).join('\n'), 
+            mentions: members 
+        });
+        break;
+
+      case 'setprefix':
+        // Example Owner Command
+        // Check if the sender is the owner
+        if (msg.key.participant !== global.owner) {
+            await sock.sendMessage(jid, { text: `❌ This command is restricted to the Bot Owner.` });
+            return;
+        }
+        
+        // Check for valid arguments
+        if (!fullArgs || fullArgs.length > 1) {
+             await sock.sendMessage(jid, { text: `⚠️ Usage: ${prefix}setprefix # (Use only one character)` });
+             return;
+        }
+        
+        // TODO: You must add logic here to save the new prefix to your settings file (e.g., settings.json)
+        global.settings.prefix = fullArgs;
+        await sock.sendMessage(jid
