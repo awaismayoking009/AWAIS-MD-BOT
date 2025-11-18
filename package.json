@@ -1,7 +1,7 @@
 {
-  "name": "AWAIS-MD-BOT",
+  "name": "AWAIS-HELL-BOT",
   "version": "1.0.0",
-  "description": "AWAIS-MD-BOT - The Ultimate Multi-Device WhatsApp Bot",
+  "description": "WhatsApp Bot created by Awais",
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
@@ -19,6 +19,7 @@
     "@adiwajshing/keyed-db": "^0.2.4",
     "@hapi/boom": "^10.0.0",
     "@whiskeysockets/baileys": "^6.7.2",
+    "@distube/ytdl-core": "^4.13.3",
     "awesome-phonenumber": "^5.9.0",
     "axios": "^1.6.7",
     "chalk": "^4.1.2",
